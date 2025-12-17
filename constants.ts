@@ -37,15 +37,6 @@ export const DEFAULT_MAPPINGS: KeyMapping[] = [
     key: 'r',
     ctrlKey: true,
     exitKey: 'ArrowRight'
-  },
-  {
-    id: 'delta',
-    name: 'Delta (\\Delta)',
-    trigger: 'Delta',
-    type: 'shortcut',
-    key: '5',
-    ctrlKey: true,
-    exitKey: 'ArrowRight'
   }
 ];
 

@@ -52,6 +52,15 @@ const App: React.FC = () => {
     text = text.replace(/\\quad/g, '  ');
     // 4. Remove lines that are purely whitespace
     text = text.replace(/^\s*[\r\n]/gm, '');
+    // 5. Handle \text{...}, \mathrm{...} - Strip wrapper, keep content
+    text = text.replace(/\\(text|mathrm|mbox)\{([^{}]+)\}/g, '$2');
+    // 6. Remove \left and \right but keep the delimiters (e.g. \left( -> (, \right] -> ])
+    text = text.replace(/\\left\s*/g, '').replace(/\\right\s*/g, '');
+    // 7. Remove backslash from standard functions (sin, cos, tan, ln, log, etc.)
+    text = text.replace(/\\(sin|cos|tan|csc|sec|cot|ln|log|exp|lim|min|max)/g, '$1');
+    // 8. Replace small space \, with normal space
+    text = text.replace(/\\,/g, ' ');
+    
     setMarkdown(text.trim());
   };
 
@@ -105,7 +114,7 @@ const App: React.FC = () => {
 
         <div className="mt-auto pt-4 border-t border-slate-800 flex justify-between items-center text-xs text-slate-600">
           <span>KeyMacro Converter</span>
-          <span className="font-mono bg-slate-800 text-emerald-500 px-2 py-0.5 rounded">v1.0</span>
+          <span className="font-mono bg-slate-800 text-emerald-500 px-2 py-0.5 rounded">v1.1</span>
         </div>
       </aside>
 
@@ -132,7 +141,7 @@ const App: React.FC = () => {
              <button 
               onClick={handleLocalClean}
               className="flex items-center gap-2 text-sm text-sky-400 hover:text-sky-300 border border-sky-800 bg-sky-900/30 px-3 py-1.5 rounded transition hover:bg-sky-900/50"
-              title="去除 \[ \] $ $ 和 \quad"
+              title="去除 \[ \] $ $ 和 \text{}"
             >
               <Eraser size={16} /> 本地格式清洗
             </button>

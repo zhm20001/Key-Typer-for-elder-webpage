@@ -1,5 +1,33 @@
 import { KeyMapping, ParsedAction, OutputType } from '../types';
 
+// 常用 LaTeX 符号到 Unicode 字符的映射
+const LATEX_SYMBOLS: Record<string, string> = {
+  // 希腊字母 (小写)
+  'alpha': 'α', 'beta': 'β', 'gamma': 'γ', 'delta': 'δ', 'epsilon': 'ε', 'zeta': 'ζ',
+  'eta': 'η', 'theta': 'θ', 'iota': 'ι', 'kappa': 'κ', 'lambda': 'λ', 'mu': 'μ',
+  'nu': 'ν', 'xi': 'ξ', 'omicron': 'ο', 'pi': 'π', 'rho': 'ρ', 'sigma': 'σ',
+  'tau': 'τ', 'upsilon': 'υ', 'phi': 'ϕ', 'chi': 'χ', 'psi': 'ψ', 'omega': 'ω',
+  // 希腊字母 (大写)
+  'Alpha': 'Α', 'Beta': 'Β', 'Gamma': 'Γ', 'Delta': 'Δ', 'Epsilon': 'Ε', 'Zeta': 'Ζ',
+  'Eta': 'Η', 'Theta': 'Θ', 'Iota': 'Ι', 'Kappa': 'Κ', 'Lambda': 'Λ', 'Mu': 'Μ',
+  'Nu': 'Ν', 'Xi': 'Ξ', 'Omicron': 'Ο', 'Pi': 'Π', 'Rho': 'Ρ', 'Sigma': 'Σ',
+  'Tau': 'Τ', 'Upsilon': 'Υ', 'Phi': 'Φ', 'Chi': 'Χ', 'Psi': 'Ψ', 'Omega': 'Ω',
+  // 关系运算符
+  'le': '≤', 'leq': '≤', 'ge': '≥', 'geq': '≥', 'ne': '≠', 'neq': '≠',
+  'approx': '≈', 'equiv': '≡', 'sim': '∼', 'simeq': '≃', 'cong': '≅',
+  'subset': '⊂', 'subseteq': '⊆', 'supset': '⊃', 'supseteq': '⊇', 'in': '∈', 'notin': '∉',
+  // 运算符号
+  'times': '×', 'cdot': '·', 'div': '÷', 'pm': '±', 'mp': '∓',
+  'cup': '∪', 'cap': '∩', 'vee': '∨', 'wedge': '∧', 'oplus': '⊕', 'otimes': '⊗',
+  // 箭头
+  'leftarrow': '←', 'rightarrow': '→', 'uparrow': '↑', 'downarrow': '↓',
+  'Leftarrow': '⇐', 'Rightarrow': '⇒', 'leftrightarrow': '↔', 'Leftrightarrow': '⇔',
+  'to': '→', 'gets': '←',
+  // 其他
+  'infty': '∞', 'partial': '∂', 'nabla': '∇', 'forall': '∀', 'exists': '∃',
+  'empty': '∅', 'emptyset': '∅', 'angle': '∠', 'therefore': '∴', 'because': '∵'
+};
+
 // A simple recursive descent parser strategy for LaTeX subsets
 export const parseMarkdownToActions = (input: string, mappings: KeyMapping[]): ParsedAction[] => {
   const actions: ParsedAction[] = [];
@@ -10,7 +38,12 @@ export const parseMarkdownToActions = (input: string, mappings: KeyMapping[]): P
 
   const addText = (text: string) => {
     if (!text) return;
-    actions.push({ type: 'text', content: text });
+    // 如果上一个动作也是 text，合并它们以减少碎片
+    if (actions.length > 0 && actions[actions.length - 1].type === 'text') {
+      actions[actions.length - 1].content += text;
+    } else {
+      actions.push({ type: 'text', content: text });
+    }
   };
 
   while (i < input.length) {
@@ -18,6 +51,13 @@ export const parseMarkdownToActions = (input: string, mappings: KeyMapping[]): P
 
     // Check for LaTeX Command Start
     if (char === '\\') {
+      // 0. Special handle for \, (small space)
+      if (input[i+1] === ',') {
+          addText(' ');
+          i += 2; // Skip \ and ,
+          continue;
+      }
+
       // Find command name
       let cmdEnd = i + 1;
       while (cmdEnd < input.length && /[a-zA-Z]/.test(input[cmdEnd])) {
@@ -28,27 +68,44 @@ export const parseMarkdownToActions = (input: string, mappings: KeyMapping[]): P
       const mapping = mappingMap.get(command);
 
       if (mapping) {
-        // It's a configured command (like \frac)
+        // Case 1: 用户自定义的快捷键 (优先级最高)
+        // 例如 \frac, \sqrt, 或用户强制定义 \Delta 为快捷键
         i = cmdEnd;
         actions.push({ type: 'command', mappingId: mapping.id });
 
-        // Handle arguments based on command type (heuristic)
-        // Usually \frac{arg1}{arg2}
         if (command === 'frac') {
-           // Parse Numerator
-           parseGroup();
-           // Move to Denominator
+           parseGroup(); // Numerator
            actions.push({ type: 'nav', content: mapping.nextFieldKey || 'ArrowRight' });
-           // Parse Denominator
-           parseGroup();
-           // Exit Fraction
+           parseGroup(); // Denominator
            actions.push({ type: 'nav', content: mapping.exitKey || 'ArrowRight' });
         } else if (command === 'sqrt') {
            parseGroup();
            actions.push({ type: 'nav', content: mapping.exitKey || 'ArrowRight' });
         }
-      } else {
-        // Unknown command, treat as text
+      } 
+      else if (command === 'text' || command === 'mathrm' || command === 'mbox') {
+        // Case 2: 文本命令 \text{...} -> 剥离外壳，保留内部
+        i = cmdEnd;
+        parseGroup(); // 直接解析内部内容为普通动作流
+      }
+      else if (['sin', 'cos', 'tan', 'csc', 'sec', 'cot', 'ln', 'log', 'exp', 'lim', 'min', 'max'].includes(command)) {
+        // Case 3: 常用数学函数命令 -> 当作普通文本输出 (sin, cos, etc.)
+        i = cmdEnd;
+        addText(command);
+      }
+      else if (command === 'left' || command === 'right') {
+        // Case 4: 忽略 \left 和 \right，直接跳过命令本身，后续循环处理后面的括号
+        i = cmdEnd;
+      }
+      else if (LATEX_SYMBOLS[command]) {
+        // Case 5: 常用符号 -> 转换为 Unicode 字符直接输入
+        i = cmdEnd;
+        addText(LATEX_SYMBOLS[command]);
+        // 符号后面通常跟着空格，LaTeX中空格被忽略，这里也稍微吞掉一个空格
+        if (i < input.length && input[i] === ' ') i++;
+      }
+      else {
+        // Case 6: 未知命令 -> 当作普通文本
         addText('\\');
         i++;
       }
@@ -169,7 +226,7 @@ export const generateJavaScriptConsoleScript = (actions: ParsedAction[], mapping
   lines.push(`        target.dispatchEvent(textEvent);`);
   lines.push(`      } catch(e) {}`);
   lines.push(``);
-  lines.push(`      // 3. 安全回退：仅在标准 input/textarea 使用 value 赋值，避免破坏富文本结构`);
+  lines.push(`      // 3. 安全回退：仅在标准 input/textarea 使用 value 赋值`);
   lines.push(`      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') {`);
   lines.push(`         const start = target.selectionStart;`);
   lines.push(`         const end = target.selectionEnd;`);
@@ -196,7 +253,9 @@ export const generateJavaScriptConsoleScript = (actions: ParsedAction[], mapping
   lines.push(`  const press = async (keyChar, ctrl, shift, alt) => {`);
   lines.push(`      target.focus();`);
   lines.push(`      const upperKey = keyChar.toUpperCase();`);
-  lines.push(`      const code = 'Key' + upperKey;`);
+  lines.push(`      // 修正：数字键应该是 DigitX，字母键是 KeyX`);
+  lines.push(`      const isDigit = /^[0-9]$/.test(keyChar);`);
+  lines.push(`      const code = isDigit ? 'Digit' + keyChar : 'Key' + upperKey;`);
   lines.push(`      const keyCode = upperKey.charCodeAt(0);`);
   lines.push(``);
   lines.push(`      // 1. 按下修饰键`);
@@ -210,7 +269,7 @@ export const generateJavaScriptConsoleScript = (actions: ParsedAction[], mapping
   lines.push(`      dispatchKey('keypress', keyChar, code, keyCode, ctrl, shift, alt);`);
   lines.push(`      dispatchKey('keyup', keyChar, code, keyCode, ctrl, shift, alt);`);
   lines.push(``);
-  lines.push(`      // 3. 增加延时：等待网页弹出公式框并移动光标 (解决乱跑问题的关键)`);
+  lines.push(`      // 3. 增加延时：等待网页弹出公式框并移动光标`);
   lines.push(`      await wait(150);`);
   lines.push(``);
   lines.push(`      // 4. 松开修饰键`);
