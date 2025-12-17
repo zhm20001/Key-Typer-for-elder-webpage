@@ -1,0 +1,5 @@
+{
+  "name": "KeyMacro Logic Converter",
+  "description": "Converts Markdown/LaTeX math answers into JavaScript simulation scripts or AutoHotkey macros for legacy knowledge base entry.",
+  "requestFramePermissions": []
+}
