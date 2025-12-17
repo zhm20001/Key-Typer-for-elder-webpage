@@ -3,15 +3,13 @@ import { DEFAULT_MAPPINGS, INITIAL_MARKDOWN } from './constants';
 import { KeyMapping, OutputType } from './types';
 import MappingEditor from './components/MappingEditor';
 import { parseMarkdownToActions, generateJavaScriptConsoleScript, generateAutoHotkeyScript } from './services/converter';
-import { cleanMarkdownWithGemini } from './services/gemini';
-import { Terminal, Wand2, Copy, FileCode, Keyboard, HelpCircle, Eraser } from 'lucide-react';
+import { Terminal, Copy, FileCode, Keyboard, HelpCircle, Eraser } from 'lucide-react';
 
 const App: React.FC = () => {
   const [markdown, setMarkdown] = useState(INITIAL_MARKDOWN);
   const [mappings, setMappings] = useState<KeyMapping[]>(DEFAULT_MAPPINGS);
   const [outputType, setOutputType] = useState<OutputType>(OutputType.JS_CONSOLE);
   const [generatedCode, setGeneratedCode] = useState('');
-  const [isProcessingAI, setIsProcessingAI] = useState(false);
   const [copied, setCopied] = useState(false);
 
   // Auto-generate code when markdown or mappings change
@@ -29,18 +27,6 @@ const App: React.FC = () => {
       setGeneratedCode('解析错误：请检查 Markdown/LaTeX 语法。');
     }
   }, [markdown, mappings, outputType]);
-
-  const handleGeminiClean = async () => {
-    setIsProcessingAI(true);
-    try {
-      const clean = await cleanMarkdownWithGemini(markdown);
-      setMarkdown(clean);
-    } catch (error) {
-      alert("连接 AI 失败，请检查 API Key。");
-    } finally {
-      setIsProcessingAI(false);
-    }
-  };
 
   const handleLocalClean = () => {
     let text = markdown;
@@ -144,13 +130,6 @@ const App: React.FC = () => {
               title="去除 \[ \] $ $ 和 \text{}"
             >
               <Eraser size={16} /> 本地格式清洗
-            </button>
-            <button 
-              onClick={handleGeminiClean}
-              disabled={isProcessingAI}
-              className="flex items-center gap-2 text-sm text-purple-400 hover:text-purple-300 disabled:opacity-50"
-            >
-              <Wand2 size={16} /> {isProcessingAI ? 'AI 正在修复...' : 'AI 智能修复'}
             </button>
           </div>
         </header>
