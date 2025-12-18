@@ -1,49 +1,54 @@
-import { KeyMapping, OutputType } from './types';
+
+import { KeyMapping } from './types';
 
 export const DEFAULT_MAPPINGS: KeyMapping[] = [
   {
     id: 'subscript',
-    name: 'Subscript (_)',
+    name: '下标 (_)',
     trigger: '_',
     type: 'shortcut',
     key: 'l',
     ctrlKey: true,
+    delay: 5,
     exitKey: 'ArrowRight'
   },
   {
     id: 'superscript',
-    name: 'Superscript (^)',
+    name: '上标 (^)',
     trigger: '^',
     type: 'shortcut',
-    key: 'h', // Common default, user can change
+    key: 'h',
     ctrlKey: true,
+    delay: 5,
     exitKey: 'ArrowRight'
   },
   {
     id: 'fraction',
-    name: 'Fraction (\\frac)',
+    name: '分数 (\\frac)',
     trigger: 'frac',
     type: 'shortcut',
     key: 'f',
     ctrlKey: true,
-    nextFieldKey: 'ArrowRight', // Often moves from numerator to denom
+    delay: 5,
+    nextFieldKey: 'ArrowRight',
     exitKey: 'ArrowRight'
   },
   {
     id: 'sqrt',
-    name: 'Square Root (\\sqrt)',
+    name: '根号 (\\sqrt)',
     trigger: 'sqrt',
     type: 'shortcut',
     key: 'r',
     ctrlKey: true,
+    delay: 5,
     exitKey: 'ArrowRight'
   }
 ];
 
-export const INITIAL_MARKDOWN = `Solution:
-The quadratic formula is:
+export const INITIAL_MARKDOWN = `解题过程：
+二次项公式为：
 $$ x = \\frac{-b \\pm \\sqrt{b^2 - 4ac}}{2a} $$
 
-Delta example: \\Delta = b^2 - 4ac
+判别式示例：\\Delta = b^2 - 4ac
 
-Another example: $ a_1 + a_2 $.`;
+其他示例：$ a_1 + a_2 $。`;
