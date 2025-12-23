@@ -13,8 +13,8 @@ export interface KeyMapping {
   // For 'sequence' type
   sequence?: string; // e.g. "/frac "
   // Navigation keys
-  nextFieldKey?: string; 
-  exitKey?: string; 
+  nextFieldKey?: string;
+  exitKey?: string;
 }
 
 export interface ParsedAction {
