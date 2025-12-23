@@ -18,7 +18,7 @@ export interface KeyMapping {
 }
 
 export interface ParsedAction {
-  type: 'text' | 'command' | 'nav';
+  type: 'text' | 'command' | 'nav' | 'delete';
   content?: string;
   mappingId?: string;
 }
