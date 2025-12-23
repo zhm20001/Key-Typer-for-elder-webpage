@@ -13,13 +13,14 @@ const LATEX_SYMBOLS: Record<string, string> = {
   'le': '≤', 'leq': '≤', 'ge': '≥', 'geq': '≥', 'ne': '≠', 'neq': '≠',
   'approx': '≈', 'equiv': '≡', 'sim': '∼', 'simeq': '≃', 'cong': '≅',
   'subset': '⊂', 'subseteq': '⊆', 'supset': '⊃', 'supseteq': '⊇', 'in': '∈', 'notin': '∉',
-  'times': '×', 'cdot': '·', 'div': '÷', 'pm': '±', 'mp': '∓',
+  'times': '×', 'cdot': '·', 'div': '÷', 'pm': '±', 'mp': '∓', 'circ': '∘',
   'cup': '∪', 'cap': '∩', 'vee': '∨', 'wedge': '∧', 'oplus': '⊕', 'otimes': '⊗',
   'leftarrow': '←', 'rightarrow': '→', 'uparrow': '↑', 'downarrow': '↓',
   'Leftarrow': '⇐', 'Rightarrow': '⇒', 'leftrightarrow': '↔', 'Leftrightarrow': '⇔',
   'to': '→', 'gets': '←',
   'infty': '∞', 'partial': '∂', 'nabla': '∇', 'forall': '∀', 'exists': '∃',
-  'empty': '∅', 'emptyset': '∅', 'angle': '∠', 'therefore': '∴', 'because': '∵'
+  'empty': '∅', 'emptyset': '∅', 'angle': '∠', 'therefore': '∴', 'because': '∵',
+  'degree': '°', 'deg': '°'
 };
 
 export const parseMarkdownToActions = (input: string, mappings: KeyMapping[]): ParsedAction[] => {
@@ -50,6 +51,8 @@ export const parseMarkdownToActions = (input: string, mappings: KeyMapping[]): P
         i = cmdEnd;
         actions.push({ type: 'command', mappingId: mapping.id });
         if (command === 'frac') {
+           // 网页端分数分子默认有选中内容，用 deleteSelected 删除
+           actions.push({ type: 'delete' });
            parseGroup();
            actions.push({ type: 'nav', content: mapping.nextFieldKey || 'ArrowRight' });
            parseGroup();
@@ -71,6 +74,15 @@ export const parseMarkdownToActions = (input: string, mappings: KeyMapping[]): P
         addText('\\'); i++;
       }
     } else if (char === '^' || char === '_') {
+      // 检测 ^{\circ} 或 ^\circ 作为角度符号的特殊情况
+      if (char === '^') {
+        if (input.substring(i, i + 8) === '^{\\circ}') {    // ^{\circ} → °（带花括号，8字符）
+          addText('°'); i += 8; continue;
+        }
+        if (input.substring(i, i + 6) === '^\\circ') {      // ^\circ → °（无花括号，6字符）
+          addText('°'); i += 6; continue;
+        }
+      }
       const mapping = mappingMap.get(char);
       if (mapping) {
         actions.push({ type: 'command', mappingId: mapping.id });
@@ -133,11 +145,18 @@ export const generateJavaScriptConsoleScript = (actions: ParsedAction[], mapping
   lines.push(`         target.dispatchEvent(new Event('input', { bubbles: true }));`);
   lines.push(`      }`);
   lines.push(`  };`);
+  lines.push(``);
+  lines.push(`  const deleteSelected = async () => {`);
+  lines.push(`      if (document.execCommand('delete', false, null)) return;`);
+  lines.push(`      document.execCommand('forwardDelete', false, null);`);
+  lines.push(`  };`);
 
   lines.push(`  const press = async (keyChar, ctrl, shift, alt, delay = 150) => {`);
   lines.push(`      const upperKey = keyChar.toUpperCase();`);
-  lines.push(`      const code = /^[0-9]$/.test(keyChar) ? 'Digit' + keyChar : 'Key' + upperKey;`);
-  lines.push(`      const keyCode = { 'ArrowRight': 39, 'ArrowLeft': 37, 'ArrowUp': 38, 'ArrowDown': 40, 'Tab': 9, 'Enter': 13 }[keyChar] || upperKey.charCodeAt(0);`);
+  lines.push(`      const codeMap = { 'Backspace': 'Backspace', 'Delete': 'Delete', 'Tab': 'Tab', 'Enter': 'Enter', 'Escape': 'Escape', 'ArrowRight': 'ArrowRight', 'ArrowLeft': 'ArrowLeft', 'ArrowUp': 'ArrowUp', 'ArrowDown': 'ArrowDown' };`);
+  lines.push(`      const code = codeMap[keyChar] || (/^[0-9]$/.test(keyChar) ? 'Digit' + keyChar : 'Key' + upperKey);`);
+  lines.push(`      const keyCodeMap = { 'Backspace': 8, 'Delete': 46, 'Tab': 9, 'Enter': 13, 'Escape': 27, 'ArrowRight': 39, 'ArrowLeft': 37, 'ArrowUp': 38, 'ArrowDown': 40 };`);
+  lines.push(`      const keyCode = keyCodeMap[keyChar] || upperKey.charCodeAt(0);`);
   lines.push(`      if (ctrl) dispatchKey('keydown', 'Control', 'ControlLeft', 17, true, false, false);`);
   lines.push(`      if (shift) dispatchKey('keydown', 'Shift', 'ShiftLeft', 16, ctrl, true, false);`);
   lines.push(`      dispatchKey('keydown', keyChar, code, keyCode, ctrl, shift, alt);`);
@@ -150,8 +169,17 @@ export const generateJavaScriptConsoleScript = (actions: ParsedAction[], mapping
 
   actions.forEach(action => {
     if (action.type === 'text') {
-      const clean = action.content!.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
-      lines.push(`  await typeText('${clean}');`);
+      // 换行符需要转换成模拟 Enter 键，而不是直接保留在字符串中
+      const parts = action.content!.split('\n');
+      for (let i = 0; i < parts.length; i++) {
+        if (i > 0) {
+          lines.push(`  await press('Enter', false, false, false, 100);`);
+        }
+        if (parts[i]) {
+          const clean = parts[i].replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+          lines.push(`  await typeText('${clean}');`);
+        }
+      }
     } else if (action.type === 'command') {
       const m = mappingMap.get(action.mappingId!);
       if (m?.type === 'shortcut') {
@@ -162,6 +190,8 @@ export const generateJavaScriptConsoleScript = (actions: ParsedAction[], mapping
       }
     } else if (action.type === 'nav') {
       lines.push(`  await press('${action.content}', false, false, false, 100);`);
+    } else if (action.type === 'delete') {
+      lines.push(`  await deleteSelected();`);
     }
   });
 
