@@ -45,13 +45,5 @@
 
 特殊符号：\infty, \partial, \nabla, \forall, \exists, \emptyset, \angle, \therefore, \because, \to, \gets, \rightarrow, \leftarrow
 
-完整测试：
-15\degree
-30^{\circ}
-45\deg
-60^\circ
-30：
-正弦：\frac{1}{2} = \frac{\sqrt{1}}{2}
-余弦：\frac{\sqrt{3}}{2}
-正切：\frac{\sqrt{3}}{3}
+分数线接根号,根号套分数\frac{\sqrt{1}}{2}, 2\frac{\sqrt{3}}{2}, \sqrt{\frac{\sqrt{3}}{3}}
 ```
