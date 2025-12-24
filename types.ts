@@ -13,12 +13,12 @@ export interface KeyMapping {
   // For 'sequence' type
   sequence?: string; // e.g. "/frac "
   // Navigation keys
-  nextFieldKey?: string; 
-  exitKey?: string; 
+  nextFieldKey?: string;
+  exitKey?: string;
 }
 
 export interface ParsedAction {
-  type: 'text' | 'command' | 'nav';
+  type: 'text' | 'command' | 'nav' | 'delete';
   content?: string;
   mappingId?: string;
 }
